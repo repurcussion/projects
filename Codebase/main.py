@@ -79,6 +79,13 @@ import sys
 import time
 from pathlib import Path
 
+# Load .env before any config module is imported so env vars are set in time
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=Path(__file__).parent / ".env", override=False)
+except ImportError:
+    pass  # python-dotenv optional; env vars may be set via shell instead
+
 # Prevent Python from writing .pyc files and __pycache__ directories
 sys.dont_write_bytecode = True
 

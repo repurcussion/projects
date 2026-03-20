@@ -78,16 +78,31 @@ def _build_llm(model_name: str, openai_model: str) -> BaseLLM:
 
     elif provider == "auto":
         # Cascading fallback: OpenAI API → Ollama → HuggingFace
-        # Each backend is tried in order; the first to succeed is used.
-        chain = [
-            OpenAILLM(model_name=openai_model),
-            OllamaLLM(model_name=model_name),
-            HuggingFaceLLM(
+        # Build each backend defensively; skip any that fail at construction
+        # (e.g. missing API key, missing package) and log a warning.
+        _candidates = [
+            ("OpenAI",       lambda: OpenAILLM(model_name=openai_model)),
+            ("Ollama",       lambda: OllamaLLM(model_name=model_name)),
+            ("HuggingFace",  lambda: HuggingFaceLLM(
                 model_name=llm_cfg.hf_parser_model,
                 max_input_tokens=llm_cfg.hf_max_input_tokens,
                 max_new_tokens=llm_cfg.hf_max_new_tokens,
-            ),
+            )),
         ]
+        chain = []
+        for label, factory in _candidates:
+            try:
+                chain.append(factory())
+            except Exception as exc:
+                logger.warning(
+                    "Provider=auto: %s unavailable at init (%s: %s) – skipping.",
+                    label, type(exc).__name__, exc,
+                )
+        if not chain:
+            raise RuntimeError(
+                "Provider=auto: no LLM backends are available. "
+                "Set OPENAI_API_KEY, start Ollama, or install transformers+torch."
+            )
         logger.info(
             "Provider=auto: chain = %s",
             " → ".join(llm.model_name for llm in chain),
