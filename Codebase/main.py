@@ -149,7 +149,7 @@ def _import_modules():
 def _build_arg_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="main.py",
-        description="CV Sorting using LLMs – ranks candidates against a job description.",
+        description="SmartRank: A Multi-LLM Framework for Automated CV Sorting & Evaluation",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -313,29 +313,49 @@ class MockLLM:
 
     _SCORE_RESPONSES = {
         "Alice Chen": {
-            "skills_score": 92, "experience_score": 95, "education_score": 100,
-            "overall_score": 94,
-            "explanation": "Alice has all 12 required skills and 7 preferred skills. Her 6 years of experience significantly exceeds the 4-year requirement, with direct LLM production experience. M.Sc. from Stanford exceeds the education requirement. Minor gap: no explicit RAG project mentioned but LLM deployment work is highly relevant."
+            "candidate_name": "Alice Chen",
+            "overall_fit_score": 91,
+            "justification": "Alice possesses all 12 required skills and 7 of 9 preferred skills with 6 years of directly relevant ML engineering experience. Her production LLM deployment work, team leadership at DataSphere Inc., and measurable scale achievements demonstrate strong technical impact. M.Sc. from Stanford significantly exceeds the education requirement.",
+            "pillar_scores": {"technical": 36, "experience": 28, "soft_skills": 14, "impact": 13},
+            "key_matches": ["Full ML stack: PyTorch/TF/LangChain/MLflow/K8s", "6 yrs production LLM engineering", "Led team deployments at scale on AWS SageMaker"],
+            "critical_gaps": [],
+            "verdict": "Strong Hire"
         },
         "Bob Martinez": {
-            "skills_score": 28, "experience_score": 40, "education_score": 60,
-            "overall_score": 35,
-            "explanation": "Bob has Python and SQL but is missing 8 required skills including PyTorch, TensorFlow, Hugging Face Transformers, LangChain, Kubernetes, and MLflow. His 4 years experience meets the minimum but is in data engineering, not ML engineering. Education meets minimum requirement."
+            "candidate_name": "Bob Martinez",
+            "overall_fit_score": 35,
+            "justification": "Bob's background is in data engineering with minimal ML exposure, missing 8 of 12 required skills including PyTorch, TensorFlow, Hugging Face Transformers, and LangChain. His 4 years experience meets the tenure minimum but is in ETL and data warehousing rather than ML engineering. No evidence of ML model deployment or LLM-related impact.",
+            "pillar_scores": {"technical": 11, "experience": 12, "soft_skills": 7, "impact": 5},
+            "key_matches": ["Python", "SQL", "AWS"],
+            "critical_gaps": ["Missing PyTorch, TensorFlow, LangChain, Hugging Face", "No ML production experience", "No Kubernetes or MLflow"],
+            "verdict": "Reject"
         },
         "Carol Nguyen": {
-            "skills_score": 96, "experience_score": 85, "education_score": 100,
-            "overall_score": 93,
-            "explanation": "Carol has all required skills plus extensive preferred skills including RAG, LoRA, PEFT, Pinecone, and FAISS. Her 5 years in ML research with LLM fine-tuning is highly relevant. Ph.D. (ABD) from MIT exceeds all education requirements. Small gap: primarily research background with less production deployment experience versus Alice."
+            "candidate_name": "Carol Nguyen",
+            "overall_fit_score": 92,
+            "justification": "Carol has all required skills plus advanced LLM specialisations (RAG, LoRA, PEFT, Pinecone, FAISS) not seen in other candidates. Her 5-year ML research background with 3 published papers and hands-on LLaMA 2 and Mistral fine-tuning is exceptional. The only minor gap is less production deployment experience compared to Alice.",
+            "pillar_scores": {"technical": 38, "experience": 25, "soft_skills": 13, "impact": 14},
+            "key_matches": ["Full stack + RAG/LoRA/PEFT/Pinecone/FAISS", "Ph.D. MIT – 3 published LLM papers", "Fine-tuned LLaMA 2 & Mistral in production"],
+            "critical_gaps": ["Research-heavy background; less production ops experience"],
+            "verdict": "Strong Hire"
         },
         "David Okafor": {
-            "skills_score": 18, "experience_score": 25, "education_score": 60,
-            "overall_score": 22,
-            "explanation": "David is missing most required ML skills: no PyTorch/TensorFlow production experience, no LangChain, no Kubernetes, no Hugging Face Transformers in production. His 3 years are in backend engineering, not ML. Personal ML projects show interest but do not substitute for professional experience. Not recommended for a senior role."
+            "candidate_name": "David Okafor",
+            "overall_fit_score": 26,
+            "justification": "David lacks most required ML skills with experience confined to Java/Python backend microservices. His 3 years do not meet the 4-year minimum requirement and are not in ML engineering. Personal ML projects demonstrate interest but do not substitute for professional production experience in a senior role.",
+            "pillar_scores": {"technical": 8, "experience": 8, "soft_skills": 6, "impact": 4},
+            "key_matches": ["Python", "Docker", "AWS"],
+            "critical_gaps": ["Below minimum experience (3 yrs vs 4 required)", "No PyTorch/TF/LangChain/HuggingFace in production", "No ML deployment or measurable ML impact"],
+            "verdict": "Reject"
         },
         "Eve Patel": {
-            "skills_score": 88, "experience_score": 80, "education_score": 80,
-            "overall_score": 85,
-            "explanation": "Eve has 12 required skills and multiple preferred skills including LangChain, OpenAI API, and MLflow. Her 4 years in ML engineering meets the minimum with strong production deployments. B.Tech. from IIT Bombay meets but does not exceed education requirement. Primarily computer vision background but LangChain QA system demonstrates NLP capability."
+            "candidate_name": "Eve Patel",
+            "overall_fit_score": 78,
+            "justification": "Eve has 12 required skills and several preferred skills including LangChain, OpenAI API, and MLflow with strong production deployments on AWS EKS and containerised ML services. Her 4 years meet the minimum requirement with measurable deployment achievements. The primary gap is a computer vision focus with less NLP and LLM depth compared to the top candidates.",
+            "pillar_scores": {"technical": 34, "experience": 22, "soft_skills": 11, "impact": 11},
+            "key_matches": ["12 required skills incl. LangChain/K8s/MLflow", "Production ML on AWS EKS", "LangChain document QA deployment"],
+            "critical_gaps": ["Primarily computer vision background", "Less NLP/LLM depth than top candidates"],
+            "verdict": "Hire"
         },
     }
 
@@ -344,25 +364,28 @@ class MockLLM:
         time.sleep(0.1)  # Simulate small latency
 
         # Detect which type of prompt it is
-        if '"candidate_name"' in prompt or "Resume Text" in prompt:
-            # Resume parsing prompt – find which candidate
-            for name_key, data in self._RESUME_RESPONSES.items():
-                if name_key.replace("_", " ").split()[0].lower() in prompt.lower():
-                    return json.dumps(data)
-            # Default
-            return json.dumps(self._RESUME_RESPONSES["alice_chen"])
+        # NOTE: scoring check must come FIRST – the rendered scoring prompt contains
+        # "candidate_name" in its OUTPUT FORMAT example, which would otherwise
+        # trigger the resume-parsing branch incorrectly.
+        if "EVALUATION CRITERIA" in prompt or "pillar_scores" in prompt:
+            # Scoring prompt (4-pillar schema) – match by candidate first name
+            for candidate_name, scores in self._SCORE_RESPONSES.items():
+                if candidate_name.split()[0] in prompt:
+                    return json.dumps(scores)
+            return json.dumps(self._SCORE_RESPONSES["Alice Chen"])
 
         elif "required_skills" in prompt and "job_title" in prompt and "responsibilities" in prompt \
              and "CANDIDATE PROFILE" not in prompt:
             # JD parsing prompt
             return json.dumps(self._JD_RESPONSE)
 
-        elif "skills_score" in prompt or "SCORING RULES" in prompt:
-            # Scoring prompt – find which candidate
-            for candidate_name, scores in self._SCORE_RESPONSES.items():
-                if candidate_name.split()[0] in prompt:
-                    return json.dumps(scores)
-            return json.dumps(self._SCORE_RESPONSES["Alice Chen"])
+        elif '"candidate_name"' in prompt or "Resume Text" in prompt:
+            # Resume parsing prompt – find which candidate
+            for name_key, data in self._RESUME_RESPONSES.items():
+                if name_key.replace("_", " ").split()[0].lower() in prompt.lower():
+                    return json.dumps(data)
+            # Default
+            return json.dumps(self._RESUME_RESPONSES["alice_chen"])
 
         # Generic fallback
         return json.dumps({"result": "ok"})

@@ -77,11 +77,14 @@ def _build_llm(model_name: str, openai_model: str) -> BaseLLM:
         return hf_llm
 
     elif provider == "auto":
-        # Cascading fallback: OpenAI API → Ollama → HuggingFace
-        # Build each backend defensively; skip any that fail at construction
-        # (e.g. missing API key, missing package) and log a warning.
-        _candidates = [
-            ("OpenAI",       lambda: OpenAILLM(model_name=openai_model)),
+        # Recommended chain for local/capstone use:
+        #   Ollama (local, free, private) → HuggingFace (offline fallback)
+        # OpenAI is prepended ONLY when OPENAI_API_KEY is present in env,
+        # avoiding 3×retry waste when no key is configured.
+        _candidates = []
+        if llm_cfg.openai_api_key:
+            _candidates.append(("OpenAI", lambda: OpenAILLM(model_name=openai_model)))
+        _candidates += [
             ("Ollama",       lambda: OllamaLLM(model_name=model_name)),
             ("HuggingFace",  lambda: HuggingFaceLLM(
                 model_name=llm_cfg.hf_parser_model,

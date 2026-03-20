@@ -5,7 +5,7 @@
 --------------------------------------------------------------
 PREREQUISITES
 --------------------------------------------------------------
-1. Python 3.10 or higher
+1. Python 3.10 or higher [The evaluation was done with 3.12.12]
 2. Install dependencies:
      pip install -r requirements.txt
 

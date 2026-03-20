@@ -289,11 +289,12 @@ class Evaluator:
 
         kw_scores = [rc.keyword_score for rc in ranked]
 
-        # LLM-only score: weighted combination of sub-scores
+        # LLM-only score: weighted combination of 4-pillar sub-scores
         llm_scores = [
-            rc.llm_skills_score * 0.5
-            + rc.llm_experience_score * 0.3
-            + rc.llm_education_score * 0.2
+            rc.llm_technical_score   * 0.40
+            + rc.llm_experience_score  * 0.30
+            + rc.llm_soft_skills_score * 0.15
+            + rc.llm_impact_score      * 0.15
             for rc in ranked
         ]
 
@@ -324,9 +325,10 @@ class Evaluator:
             return round(sum(lst) / len(lst), 2)
 
         return {
-            "avg_llm_skills_score": avg([r.llm_skills_score for r in ranked]),
-            "avg_llm_experience_score": avg([r.llm_experience_score for r in ranked]),
-            "avg_llm_education_score": avg([r.llm_education_score for r in ranked]),
+            "avg_llm_technical_score":   avg([r.llm_technical_score   for r in ranked]),
+            "avg_llm_experience_score":  avg([r.llm_experience_score  for r in ranked]),
+            "avg_llm_soft_skills_score": avg([r.llm_soft_skills_score for r in ranked]),
+            "avg_llm_impact_score":      avg([r.llm_impact_score      for r in ranked]),
             "avg_keyword_score": avg([r.keyword_score for r in ranked]),
             "avg_final_score": avg([r.final_score for r in ranked]),
             "score_spread": round(

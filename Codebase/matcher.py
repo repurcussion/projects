@@ -45,21 +45,25 @@ class MatchResult:
     # Keyword overlap score (Step 1) – 0 to 100
     keyword_score: float = 0.0
 
-    # LLM sub-scores (Step 2) – 0 to 100 each
-    llm_skills_score: float = 0.0
-    llm_experience_score: float = 0.0
-    llm_education_score: float = 0.0
-    llm_overall_score: float = 0.0
+    # LLM pillar scores (Step 2) – normalised 0 to 100 each
+    llm_technical_score: float = 0.0      # Core Technical Skills (40%)
+    llm_experience_score: float = 0.0     # Relevant Experience (30%)
+    llm_soft_skills_score: float = 0.0    # Soft Skills & Leadership (15%)
+    llm_impact_score: float = 0.0         # Project Impact (15%)
+    llm_overall_score: float = 0.0        # overall_fit_score from LLM
 
     # Final blended score (Step 3)
     final_score: float = 0.0
 
-    # Human-readable reasoning produced by LLM-2
+    # Human-readable reasoning produced by llama3
     explanation: str = ""
 
-    # Keyword matching details (shown in terminal output)
+    # Keyword matching details (from Step 1) and LLM-identified gaps
     matched_skills: List[str] = field(default_factory=list)
     missing_skills: List[str] = field(default_factory=list)
+    key_matches: List[str] = field(default_factory=list)
+    critical_gaps: List[str] = field(default_factory=list)
+    verdict: str = ""
 
     # Error from LLM scoring (None if scoring succeeded)
     llm_error: Optional[str] = None
@@ -70,10 +74,14 @@ class MatchResult:
             "candidate_name": self.candidate_name,
             "final_score": round(self.final_score, 2),
             "keyword_score": round(self.keyword_score, 2),
-            "llm_skills_score": round(self.llm_skills_score, 2),
+            "llm_technical_score": round(self.llm_technical_score, 2),
             "llm_experience_score": round(self.llm_experience_score, 2),
-            "llm_education_score": round(self.llm_education_score, 2),
+            "llm_soft_skills_score": round(self.llm_soft_skills_score, 2),
+            "llm_impact_score": round(self.llm_impact_score, 2),
             "llm_overall_score": round(self.llm_overall_score, 2),
+            "key_matches": self.key_matches,
+            "critical_gaps": self.critical_gaps,
+            "verdict": self.verdict,
             "matched_skills": self.matched_skills,
             "missing_skills": self.missing_skills,
             "explanation": self.explanation,
@@ -86,45 +94,47 @@ class MatchResult:
 # ---------------------------------------------------------------------------
 
 SCORE_TEMPLATE = """\
-You are a strict, expert technical recruiter evaluating a candidate's fit for a job.
+### ROLE
+You are an expert Technical Recruiter with 20 years of experience in specialised talent
+acquisition. Evaluate the Candidate Resume against the Job Description with high precision.
 
-SCORING RULES (be conservative – penalise missing data):
-- skills_score    (0-100): Weight = 50%.  Full marks only if ALL required skills are present.
-  Deduct 10 points per missing required skill. Deduct 5 points per missing preferred skill.
-- experience_score (0-100): Weight = 30%.  Compare candidate years vs required years.
-  If candidate has fewer years than required, deduct proportionally.
-  Penalise unrelated experience heavily (−20 pts).
-- education_score (0-100): Weight = 20%.  Full marks if education meets or exceeds requirement.
-  Deduct 30 pts if education is below requirement.
+### INPUT DATA
+1. **Job Description (JD):** {parsed_jd_data}
+2. **Candidate Resume:** {structured_resume_data}
 
-ANTI-HALLUCINATION RULES:
-- Do NOT assume skills not explicitly listed.
-- Do NOT give credit for experience that is clearly unrelated.
-- If data is missing, treat it as not present.
-- Be strict and conservative in all scores.
+### EVALUATION CRITERIA
+Evaluate alignment across four pillars:
+1. **Core Technical Skills (40%):** Does the candidate possess the mandatory tech stack?
+2. **Relevant Experience (30%):** Years of experience and domain expertise match?
+3. **Soft Skills & Leadership (15%):** Evidence of communication, team management, problem-solving.
+4. **Project Impact (15%):** Quality of achievements ("Reduced latency by 20%" vs "Worked on latency").
 
-CANDIDATE PROFILE:
-Name: {candidate_name}
-Skills: {skills}
-Experience: {experience_years} years – {experience_summary}
-Education: {education}
-Certifications: {certifications}
+### INSTRUCTIONS
+- Use Chain-of-Thought reasoning: extract evidence that matches or conflicts with the JD.
+- Be critical. If a skill is mentioned but no practical application is shown, give a partial score.
+- Identify Missing Critical Gaps that might be a deal-breaker.
+- Do NOT assume skills not explicitly listed. If data is missing, treat it as not present.
+- ANTI-ANCHORING: Every candidate is unique. Score each pillar independently on specific
+  evidence. Do NOT assign the same score to different candidates.
+- Use PRECISE values, not round numbers. Avoid multiples of 5 or 10 unless the math demands it.
+- CONSTRAINT: overall_fit_score MUST equal exactly:
+  pillar_scores.technical + pillar_scores.experience + pillar_scores.soft_skills + pillar_scores.impact
 
-JOB REQUIREMENTS:
-Title: {job_title}
-Required Skills: {required_skills}
-Preferred Skills: {preferred_skills}
-Minimum Experience: {min_experience_years} years
-Education Requirement: {education_requirement}
-Key Responsibilities: {responsibilities}
-
+### OUTPUT FORMAT
 Respond ONLY with valid JSON (no markdown, no extra text):
 {{
-  "skills_score": <number 0-100>,
-  "experience_score": <number 0-100>,
-  "education_score": <number 0-100>,
-  "overall_score": <number 0-100>,
-  "explanation": "<2-4 sentence objective explanation of the score, citing specific evidence>"
+  "candidate_name": "{candidate_name}",
+  "overall_fit_score": <MUST equal technical + experience + soft_skills + impact>,
+  "justification": "<3-sentence summary of the decision>",
+  "pillar_scores": {{
+    "technical": <integer 0-40>,
+    "experience": <integer 0-30>,
+    "soft_skills": <integer 0-15>,
+    "impact": <integer 0-15>
+  }},
+  "key_matches": ["<top 3 matching skills/experiences>"],
+  "critical_gaps": ["<missing mandatory requirements>"],
+  "verdict": "<Strong Hire / Hire / Potential / Reject>"
 }}
 """
 
@@ -170,13 +180,10 @@ class HybridMatcher:
         self.keyword_weight = keyword_weight or scoring_cfg.keyword_weight
         self.llm_weight = llm_weight or scoring_cfg.llm_weight
 
-        # Build the LangChain prompt template for LLM-2 scoring
+        # Build the LangChain prompt template for llama3 scoring
         self._prompt = PromptTemplate(
             input_variables=[
-                "candidate_name", "skills", "experience_years",
-                "experience_summary", "education", "certifications",
-                "job_title", "required_skills", "preferred_skills",
-                "min_experience_years", "education_requirement", "responsibilities",
+                "candidate_name", "parsed_jd_data", "structured_resume_data",
             ],
             template=SCORE_TEMPLATE,
         )
@@ -204,18 +211,30 @@ class HybridMatcher:
         llm_result = self._llm_score(resume, jd)
 
         if llm_result is not None:
-            # Use LLM sub-scores directly
-            result.llm_skills_score = llm_result.get("skills_score", 0.0)
-            result.llm_experience_score = llm_result.get("experience_score", 0.0)
-            result.llm_education_score = llm_result.get("education_score", 0.0)
-            result.llm_overall_score = llm_result.get("overall_score", 0.0)
-            result.explanation = llm_result.get("explanation", "")
+            pillars = llm_result.get("pillar_scores", {})
+            raw_tech  = _safe_float(pillars.get("technical",   0))
+            raw_exp   = _safe_float(pillars.get("experience",  0))
+            raw_soft  = _safe_float(pillars.get("soft_skills", 0))
+            raw_imp   = _safe_float(pillars.get("impact",      0))
+            # Normalise each pillar to 0-100 for uniform sub-score display
+            result.llm_technical_score   = min(raw_tech  / 0.40, 100.0)
+            result.llm_experience_score  = min(raw_exp   / 0.30, 100.0)
+            result.llm_soft_skills_score = min(raw_soft  / 0.15, 100.0)
+            result.llm_impact_score      = min(raw_imp   / 0.15, 100.0)
+            # Compute overall from raw pillar sum – guaranteed consistent, overrides LLM anchor
+            result.llm_overall_score = min(raw_tech + raw_exp + raw_soft + raw_imp, 100.0)
+            result.explanation = llm_result.get("justification", "")
+            result.key_matches = llm_result.get("key_matches", [])[:3]
+            result.critical_gaps = llm_result.get("critical_gaps", [])
+            result.verdict = llm_result.get("verdict", "")
         else:
-            # LLM failed – fall back to keyword score for all LLM components
-            result.llm_skills_score = kw_score
-            result.llm_experience_score = self._experience_heuristic(resume, jd)
-            result.llm_education_score = 50.0   # neutral when unknown
-            result.llm_overall_score = kw_score
+            # LLM failed – fall back to keyword score for all pillars
+            exp_score = self._experience_heuristic(resume, jd)
+            result.llm_technical_score   = kw_score
+            result.llm_experience_score  = exp_score
+            result.llm_soft_skills_score = 50.0   # neutral when unknown
+            result.llm_impact_score      = 50.0   # neutral when unknown
+            result.llm_overall_score     = kw_score
             result.llm_error = "LLM scoring failed – keyword fallback used"
             result.explanation = (
                 f"LLM scoring unavailable. "
@@ -364,20 +383,26 @@ class HybridMatcher:
                         overall_score, explanation
         None if the LLM call or JSON parse fails.
         """
-        # Render the complete scoring prompt with candidate and JD data
+        # Format structured data blocks for the prompt
+        jd_block = (
+            f"Title: {jd.job_title} | "
+            f"Required Skills: {', '.join(jd.required_skills) or 'not specified'} | "
+            f"Preferred Skills: {', '.join(jd.preferred_skills) or 'not specified'} | "
+            f"Min Experience: {jd.min_experience_years} yrs | "
+            f"Education: {jd.education_requirement or 'not specified'} | "
+            f"Responsibilities: {'; '.join(jd.responsibilities[:5]) or 'not specified'}"
+        )
+        resume_block = (
+            f"Name: {resume.candidate_name} | "
+            f"Skills: {', '.join(resume.skills) or 'none listed'} | "
+            f"Experience: {resume.experience_years} yrs – {resume.experience_summary or 'not provided'} | "
+            f"Education: {resume.education or 'not provided'} | "
+            f"Certifications: {', '.join(resume.certifications) or 'none'}"
+        )
         prompt = self._prompt.format(
             candidate_name=resume.candidate_name,
-            skills=", ".join(resume.skills) or "none listed",
-            experience_years=resume.experience_years,
-            experience_summary=resume.experience_summary or "not provided",
-            education=resume.education or "not provided",
-            certifications=", ".join(resume.certifications) or "none",
-            job_title=jd.job_title,
-            required_skills=", ".join(jd.required_skills) or "not specified",
-            preferred_skills=", ".join(jd.preferred_skills) or "not specified",
-            min_experience_years=jd.min_experience_years,
-            education_requirement=jd.education_requirement or "not specified",
-            responsibilities="; ".join(jd.responsibilities[:5]) or "not specified",
+            parsed_jd_data=jd_block,
+            structured_resume_data=resume_block,
         )
 
         try:
@@ -385,10 +410,17 @@ class HybridMatcher:
             raw = self.scorer_llm.generate(prompt, temperature=0.0)
             data = _extract_json(raw)
 
-            # Validate and clamp all scores to [0, 100]
-            for key in ("skills_score", "experience_score", "education_score", "overall_score"):
-                data[key] = max(0.0, min(100.0, _safe_float(data.get(key, 0))))
-
+            # Validate and clamp pillar scores to their max values
+            pillars = data.get("pillar_scores", {})
+            pillars["technical"]   = max(0.0, min(40.0, _safe_float(pillars.get("technical",   0))))
+            pillars["experience"]  = max(0.0, min(30.0, _safe_float(pillars.get("experience",  0))))
+            pillars["soft_skills"] = max(0.0, min(15.0, _safe_float(pillars.get("soft_skills", 0))))
+            pillars["impact"]      = max(0.0, min(15.0, _safe_float(pillars.get("impact",      0))))
+            data["pillar_scores"]  = pillars
+            data["overall_fit_score"] = max(0.0, min(100.0, _safe_float(
+                data.get("overall_fit_score",
+                         sum(pillars.values()))
+            )))
             return data
 
         except Exception as exc:

@@ -14,7 +14,8 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 
 # Supported providers: "auto" | "ollama" | "openai" | "hf"
-# auto = OpenAI API → Ollama (local) → HuggingFace (local)
+# auto = Ollama (local) → HuggingFace (local) [→ OpenAI if OPENAI_API_KEY set]
+# Recommended for capstone: auto (Ollama-first, free, private, no API key needed)
 LLM_PROVIDER: str = os.environ.get("LLM_PROVIDER", "auto")
 
 # LLM-1  → lightweight parsing model
@@ -39,10 +40,12 @@ HF_MAX_NEW_TOKENS: int = int(os.environ.get("HF_MAX_NEW_TOKENS", "384"))
 
 # ---------------------------------------------------------------------------
 # Scoring weights  (must sum to 1.0)
+# 4-pillar schema: Technical (40%) + Experience (30%) + Soft Skills (15%) + Impact (15%)
 # ---------------------------------------------------------------------------
-WEIGHT_SKILLS: float = 0.50
+WEIGHT_TECHNICAL: float = 0.40
 WEIGHT_EXPERIENCE: float = 0.30
-WEIGHT_EDUCATION: float = 0.20
+WEIGHT_SOFT_SKILLS: float = 0.15
+WEIGHT_IMPACT: float = 0.15
 
 # ---------------------------------------------------------------------------
 # Hybrid matching blend
@@ -86,9 +89,10 @@ class LLMConfig:
 
 @dataclass
 class ScoringConfig:
-    weight_skills: float = WEIGHT_SKILLS
+    weight_technical: float = WEIGHT_TECHNICAL
     weight_experience: float = WEIGHT_EXPERIENCE
-    weight_education: float = WEIGHT_EDUCATION
+    weight_soft_skills: float = WEIGHT_SOFT_SKILLS
+    weight_impact: float = WEIGHT_IMPACT
     keyword_weight: float = KEYWORD_WEIGHT
     llm_weight: float = LLM_WEIGHT
     top_k: int = TOP_K

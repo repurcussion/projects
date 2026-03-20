@@ -117,24 +117,36 @@ class Reporter:
                 f"[{rec_col}{rc.recommendation}{RESET}]"
             )
 
-            # ---- Line 2: score breakdown ----
+            # ---- Line 2: 4-pillar score breakdown ----
             print(
-                f"       {GREY}Skills: {rc.llm_skills_score:.0f}  "
+                f"       {GREY}Technical: {rc.llm_technical_score:.0f}  "
                 f"Experience: {rc.llm_experience_score:.0f}  "
-                f"Education: {rc.llm_education_score:.0f}  "
+                f"Soft Skills: {rc.llm_soft_skills_score:.0f}  "
+                f"Impact: {rc.llm_impact_score:.0f}  "
                 f"Keyword: {rc.keyword_score:.0f}{RESET}"
             )
 
-            # ---- Line 3: matched skills (max 5) ----
-            if rc.matched_skills:
+            # ---- Line 3: LLM key matches (top 3) ----
+            if rc.key_matches:
+                print(
+                    f"       {GREEN}✓ Key Matches:{RESET} "
+                    f"{', '.join(rc.key_matches)}"
+                )
+            elif rc.matched_skills:
                 print(
                     f"       {GREEN}✓ Matched:{RESET} "
                     f"{', '.join(rc.matched_skills[:5])}"
                     f"{'...' if len(rc.matched_skills) > 5 else ''}"
                 )
 
-            # ---- Line 4: missing skills (max 5) ----
-            if rc.missing_skills:
+            # ---- Line 4: LLM critical gaps ----
+            if rc.critical_gaps:
+                print(
+                    f"       {RED}✗ Critical Gaps:{RESET} "
+                    f"{', '.join(rc.critical_gaps[:3])}"
+                    f"{'...' if len(rc.critical_gaps) > 3 else ''}"
+                )
+            elif rc.missing_skills:
                 print(
                     f"       {RED}✗ Missing:{RESET} "
                     f"{', '.join(rc.missing_skills[:5])}"
@@ -172,12 +184,23 @@ class Reporter:
 
         # Core IR metrics (Precision@K, Recall@K, MRR, NDCG@K, etc.)
         core = metrics.get("core_metrics", {})
+        top_k = core.get("top_k", 3)
+        _METRIC_LABELS = {
+            f"precision_at_{top_k}":      f"Precision@{top_k}  (top-{top_k} accuracy: relevant hits / {top_k})",
+            f"recall_at_{top_k}":         f"Recall@{top_k}     (coverage: relevant found / total relevant)",
+            "mrr":                         "MRR           (rank of first relevant result)",
+            f"ndcg_at_{top_k}":           f"NDCG@{top_k}       (ranked quality, rewards top placement)",
+            "explainability_score":        "Explainability (LLM explanation quality proxy)",
+            "total_relevant_candidates":   "Total Relevant (score ≥ threshold)",
+            "relevance_threshold":         "Relevance Threshold (min score = relevant)",
+            "top_k":                       "Top-K",
+        }
         for key, val in core.items():
-            label = key.replace("_", " ").title()
+            label = _METRIC_LABELS.get(key, key.replace("_", " ").title())
             if isinstance(val, float):
-                print(f"  {label:<28}: {val:.4f}")
+                print(f"  {label:<52}: {val:.4f}")
             else:
-                print(f"  {label:<28}: {val}")
+                print(f"  {label:<52}: {val}")
 
         # Pipeline latency breakdown
         latency = metrics.get("latency", {})
@@ -361,23 +384,23 @@ class Reporter:
         # ==============================================================
         # Chart 2 – Component Score Breakdown (grouped bars)
         # ==============================================================
-        skills_scores  = [rc.llm_skills_score     for rc in ranked]
-        exp_scores     = [rc.llm_experience_score  for rc in ranked]
-        edu_scores     = [rc.llm_education_score   for rc in ranked]
-        kw_scores      = [rc.keyword_score         for rc in ranked]
+        tech_scores = [rc.llm_technical_score    for rc in ranked]
+        exp_scores  = [rc.llm_experience_score   for rc in ranked]
+        soft_scores = [rc.llm_soft_skills_score  for rc in ranked]
+        imp_scores  = [rc.llm_impact_score       for rc in ranked]
 
         x      = np.arange(len(names))
-        width  = 0.2
+        width  = 0.18
 
         fig, ax = plt.subplots(figsize=(max(8, len(names) * 1.6), 6))
 
-        ax.bar(x - 1.5 * width, skills_scores, width, label="Skills (LLM)",
+        ax.bar(x - 1.5 * width, tech_scores,  width, label="Technical (40%)",
                color="#42a5f5", edgecolor="white")
-        ax.bar(x - 0.5 * width, exp_scores,    width, label="Experience (LLM)",
+        ax.bar(x - 0.5 * width, exp_scores,   width, label="Experience (30%)",
                color="#66bb6a", edgecolor="white")
-        ax.bar(x + 0.5 * width, edu_scores,    width, label="Education (LLM)",
+        ax.bar(x + 0.5 * width, soft_scores,  width, label="Soft Skills (15%)",
                color="#ffa726", edgecolor="white")
-        ax.bar(x + 1.5 * width, kw_scores,     width, label="Keyword Overlap",
+        ax.bar(x + 1.5 * width, imp_scores,   width, label="Impact (15%)",
                color="#ab47bc", edgecolor="white")
 
         ax.set_xticks(x)

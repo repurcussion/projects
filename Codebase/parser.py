@@ -110,14 +110,13 @@ STRICT RULES:
 - experience_years: total years of work experience as a number. Use 0 if unknown.
 - experience_summary: ONE sentence only summarising job history.
 - education: highest degree and institution only (e.g. "MSc Computer Science, MIT").
-- certifications: list up to 3 certifications. Use [] if none.
 - If a field is missing use "" or [].
 
 Resume:
 {resume_text}
 
 Reply with ONLY this JSON (no markdown, no extra text, no trailing commas):
-{{"candidate_name":"","email":"","phone":"","skills":[],"experience_years":0,"experience_summary":"","education":"","certifications":[]}}
+{{"candidate_name":"","email":"","phone":"","skills":[],"experience_years":0,"experience_summary":"","education":""}}
 """
 
 # JD parsing prompt – extracts required/preferred skills and role details.
@@ -165,12 +164,14 @@ def _repair_truncated_json(text: str) -> str:
     """
     s = text.rstrip()
 
-    # Drop trailing incomplete token: anything that isn't a valid JSON terminal
+    # Drop trailing incomplete token: anything that isn't a valid JSON terminal.
+    # Include the last safe character (last_safe+1) so an opening `"` is
+    # preserved – the walk below then tracks it as an open string and closes it.
     if s and s[-1] not in ('"', ']', '}', 'e', 'l', 'n',
                             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'):
         last_safe = max(s.rfind('"'), s.rfind(','), s.rfind('['), s.rfind('{'))
         if last_safe > 0:
-            s = s[:last_safe]
+            s = s[:last_safe + 1]   # include the safe char itself
 
     # Walk string to find unbalanced brackets
     open_stack: list = []
@@ -195,6 +196,9 @@ def _repair_truncated_json(text: str) -> str:
     # Close any unterminated string literal
     if in_string:
         s += '"'
+
+    # Strip trailing comma before closing (JSON forbids trailing commas)
+    s = s.rstrip().rstrip(',')
 
     # Close all remaining open brackets in reverse order
     for b in reversed(open_stack):
@@ -234,8 +238,16 @@ def _extract_json(text: str) -> Dict[str, Any]:
     except json.JSONDecodeError:
         pass
 
-    # Attempt 4: repair truncated JSON (gemma:2b often cuts off mid-stream)
-    repaired = _repair_truncated_json(candidate)
+    # Attempt 4: sanitise literal control characters (gemma:2b often embeds
+    # raw newlines inside JSON string values, which makes the output invalid)
+    sanitised = re.sub(r'[\r\n\t]+', ' ', candidate)
+    try:
+        return json.loads(sanitised)
+    except json.JSONDecodeError:
+        pass
+
+    # Attempt 5: repair truncated JSON, then sanitise
+    repaired = _repair_truncated_json(sanitised)
     try:
         data = json.loads(repaired)
         logger.warning("Partial JSON repaired and recovered.")
@@ -260,8 +272,9 @@ def _clean_skills(skills: List[str]) -> List[str]:
     """
     cleaned: List[str] = []
     for item in skills:
-        # Remove leading "Category:" or "Category -" labels
-        item = re.sub(r'^[A-Za-z /&]+[:–\-]\s*', '', item).strip()
+        # Remove leading "Category:" or "Category –" labels (colon or en-dash only).
+        # Do NOT strip hyphens: they appear in skill names like Scikit-learn, XGBoost.
+        item = re.sub(r'^[A-Za-z /&]+[:\u2013]\s*', '', item).strip()
         # Split if multiple skills were merged into one element
         parts = [p.strip() for p in item.split(',')] if ',' in item else [item]
         cleaned.extend(p for p in parts if p)
@@ -315,9 +328,17 @@ def _regex_resume_fallback(
     """
     Build a ParsedResume entirely from regex when the LLM fails completely.
 
-    Extracts: email, phone, years of experience, education, and tech skills.
+    Extracts: name (from first line), email, phone, years of experience,
+    experience summary (from SUMMARY section), education, and tech skills.
     This guarantees every candidate enters the matching stage with a skills list.
     """
+    # Extract name: use the first non-empty line if it looks like a person's name
+    lines = [l.strip() for l in raw_text.strip().splitlines() if l.strip()]
+    if lines:
+        first = lines[0]
+        if re.match(r'^[A-Za-z][A-Za-z\s\-\.]+$', first) and len(first.split()) <= 4:
+            candidate_name = first
+
     # Extract email via standard pattern
     email_m = re.search(r"[\w.+-]+@[\w.-]+\.\w+", raw_text)
     # Extract phone (7-15 digit sequence with common separators)
@@ -329,6 +350,16 @@ def _regex_resume_fallback(
         r"(B\.?S\.?c?|M\.?S\.?c?|M\.?Eng|Ph\.?D|Bachelor|Master|Doctor)[^\n]{0,60}",
         raw_text, re.IGNORECASE,
     )
+    # Extract first sentence of SUMMARY section for a meaningful experience summary
+    summary_text = ""
+    summary_m = re.search(r'SUMMARY\s*\n(.*?)(?:\n\n|\Z)', raw_text,
+                           re.IGNORECASE | re.DOTALL)
+    if summary_m:
+        first_sentence = re.split(r'(?<=[.!?])\s+', summary_m.group(1).strip())
+        summary_text = first_sentence[0] if first_sentence else ""
+    if not summary_text and years_m:
+        summary_text = f"{int(_safe_float(years_m.group(1)))} years of professional experience."
+
     # Scan raw text for known tech skill keywords
     skills = _regex_extract_skills(raw_text)
 
@@ -338,7 +369,7 @@ def _regex_resume_fallback(
         phone=phone_m.group(0).strip() if phone_m else "",
         skills=skills,
         experience_years=_safe_float(years_m.group(1)) if years_m else 0.0,
-        experience_summary="Extracted via regex fallback (LLM parse failed).",
+        experience_summary=summary_text or "Extracted via regex fallback.",
         education=edu_m.group(0).strip() if edu_m else "",
         raw_text=raw_text,
         parse_error=error,
@@ -411,17 +442,35 @@ class ResumeParser:
             # Post-process skills: strip category labels, split merged lists
             raw_skills = _to_str_list(llm_data.get("skills", []))
             skills = _clean_skills(raw_skills)
-            # If LLM returned only abstract categories (<4 specific tools),
-            # replace with deterministic regex extraction from raw text
-            if len(skills) < 4:
-                skills = _regex_extract_skills(raw_text)
+            # Supplement with regex when LLM extracted fewer than 8 skills, OR
+            # when regex finds 10+ more skills than LLM (partial extraction: Eve
+            # gets 16 from LLM but 28+ from regex due to token budget pressure).
+            regex_skills = _regex_extract_skills(raw_text)
+            if len(skills) < 8 or len(regex_skills) > len(skills) + 10:
+                existing_lower = {s.lower() for s in skills}
+                for s in regex_skills:
+                    if s.lower() not in existing_lower:
+                        skills.append(s)
+                        existing_lower.add(s.lower())
+
+            # If LLM set experience_years to 0, try to recover from summary/text
+            exp_years = _safe_float(llm_data.get("experience_years", 0))
+            if exp_years == 0:
+                summary_text = str(llm_data.get("experience_summary", ""))
+                years_m = re.search(
+                    r"(\d+(?:\.\d+)?)\s*\+?\s*years?",
+                    summary_text + " " + raw_text[:500],
+                    re.IGNORECASE,
+                )
+                if years_m:
+                    exp_years = _safe_float(years_m.group(1))
 
             return ParsedResume(
                 candidate_name=llm_data.get("candidate_name") or candidate_name,
                 email=str(llm_data.get("email", "")),
                 phone=str(llm_data.get("phone", "")),
                 skills=skills,
-                experience_years=_safe_float(llm_data.get("experience_years", 0)),
+                experience_years=exp_years,
                 experience_summary=str(llm_data.get("experience_summary", "")),
                 education=str(llm_data.get("education", "")),
                 certifications=_to_str_list(llm_data.get("certifications", [])),

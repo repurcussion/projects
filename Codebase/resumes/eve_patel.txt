@@ -8,12 +8,9 @@ scale. Expertise in computer vision and NLP. Strong Python and MLOps skills. Exp
 with LLMs and building LangChain-based applications.
 
 TECHNICAL SKILLS
-ML/DL: Python, PyTorch, TensorFlow, Scikit-learn, Hugging Face Transformers, LangChain,
-       OpenAI API, Stable Diffusion, YOLO, OpenCV
-MLOps: Docker, Kubernetes, MLflow, DVC, Prometheus, Grafana, GitHub Actions, ArgoCD
-Cloud: AWS (SageMaker, Lambda, S3, ECR), GCP (basic)
-Data: SQL, PostgreSQL, Spark, Pandas, NumPy, Kafka (basic)
-Languages: Python (expert), C++ (intermediate), Bash
+Python, PyTorch, TensorFlow, Scikit-learn, Hugging Face Transformers, LangChain, OpenAI API,
+Stable Diffusion, YOLO, OpenCV, Docker, Kubernetes, MLflow, DVC, Prometheus, Grafana,
+GitHub Actions, ArgoCD, FastAPI, AWS, GCP, SQL, PostgreSQL, Spark, Pandas, NumPy, Kafka, Git
 
 PROFESSIONAL EXPERIENCE
 

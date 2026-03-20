@@ -1,6 +1,6 @@
-# CV Sorting using LLMs
+# SmartRank: A Multi-LLM Framework for Automated CV Sorting & Evaluation
 
-A production-quality, modular Python pipeline that parses resumes and job descriptions using two LLMs, performs hybrid candidate-job matching, and outputs a ranked leaderboard with explanations and evaluation metrics.
+A production-quality, modular Python pipeline that uses a cascading multi-LLM architecture (OpenAI API → Ollama → HuggingFace) to parse resumes and job descriptions, perform hybrid candidate-job matching, and output a ranked leaderboard with explanations and evaluation metrics.
 
 ---
 
@@ -8,7 +8,7 @@ A production-quality, modular Python pipeline that parses resumes and job descri
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CV SORTING PIPELINE                       │
+│                        SMARTRANK                             │
 ├──────────────┬──────────────┬──────────────┬────────────────┤
 │  INPUT LAYER │ PARSING LAYER│  LLM LAYER   │ MATCHING ENGINE│
 │              │              │              │                │
@@ -32,10 +32,12 @@ A production-quality, modular Python pipeline that parses resumes and job descri
 
 ## LLM Design
 
-| Role | Model (Ollama) | Model (OpenAI) | Purpose |
-|------|---------------|----------------|---------|
-| **LLM-1** (Parser) | `gemma:2b` | `gpt-3.5-turbo` | Fast, lightweight – extracts structured fields from raw resume + JD text |
-| **LLM-2** (Scorer) | `llama3` | `gpt-4o` | Accurate, reasoning – semantic scoring + human-readable explanation |
+| Role | Model (Ollama) | Model (OpenAI) | Model (HuggingFace) | Purpose |
+|------|---------------|----------------|---------------------|--------|
+| **LLM-1** (Parser) | `gemma:2b` | `gpt-3.5-turbo` | `flan-t5-base` | Fast extraction – structured JSON from raw resume + JD text |
+| **LLM-2** (Scorer) | `llama3` | `gpt-4o` | — | Reasoning – semantic scoring + human-readable explanation |
+
+> **Default provider is `auto`**: tries OpenAI API first, falls back to Ollama, then HuggingFace.
 
 Both models are injected via the `BaseLLM` interface. Swapping models requires a single config change.
 
@@ -53,20 +55,23 @@ pip install -r requirements.txt
 python main.py --resumes ./resumes --jd jd.txt --demo
 ```
 
-### 2b – Ollama mode
+### 2b – Auto mode (API first, local fallback)
 ```bash
-ollama pull gemma:2b
-ollama pull llama3
-python main.py --resumes ./resumes --jd jd.txt        # TXT job description
-python main.py --resumes ./resumes --jd jd.pdf         # PDF job description
-python main.py --resumes ./resumes --jd jd.docx        # DOCX job description
+cp .env.example .env          # add your OPENAI_API_KEY inside
+python main.py --resumes ./resumes --jd jd.txt
+# → tries OpenAI, falls back to Ollama, then HuggingFace automatically
 ```
 
-### 2c – OpenAI mode
+### 2c – Ollama only
 ```bash
-export OPENAI_API_KEY="sk-..."
-python main.py --resumes ./resumes --jd jd.txt \
-  --provider openai --parser gpt-3.5-turbo --scorer gpt-4o
+ollama pull gemma:2b && ollama pull llama3
+python main.py --resumes ./resumes --jd jd.txt --provider ollama
+```
+
+### 2d – HuggingFace only (fully offline)
+```bash
+python main.py --resumes ./resumes --jd jd.txt --provider hf
+# downloads google/flan-t5-base on first run
 ```
 
 ---
@@ -78,7 +83,7 @@ python main.py --resumes ./resumes --jd jd.txt \
 | `--resumes PATH` | required | Directory of resume files |
 | `--jd FILE` | required | Job description file |
 | `--output FILE` | `results.json` | JSON output path |
-| `--provider` | `ollama` | `ollama` or `openai` |
+| `--provider` | `auto` | `auto` (API→Ollama→HF), `ollama`, `openai`, `hf` |
 | `--parser MODEL` | `gemma:2b` | LLM-1 model name |
 | `--scorer MODEL` | `llama3` | LLM-2 model name |
 | `--topk K` | `3` | K for Precision@K / Recall@K |
@@ -163,6 +168,8 @@ Codebase/
 ├── llm_base.py       BaseLLM abstract interface (LLM-agnostic contract)
 ├── llm_ollama.py     OllamaLLM – local server (gemma:2b, llama3)
 ├── llm_openai.py     OpenAILLM – OpenAI API (gpt-3.5-turbo, gpt-4o)
+├── llm_hf.py         HuggingFaceLLM – local Flan-T5 extraction layer
+├── llm_fallback.py   FallbackLLM – cascading chain (OpenAI→Ollama→HF)
 ├── llm_factory.py    Factory: wires config/CLI flags → LLM instances
 ├── file_reader.py    PDF / DOCX / TXT text extraction
 ├── parser.py         LLM-1: ResumeParser + JDParser (structured extraction)
@@ -231,7 +238,7 @@ A six-stage pipeline processes resumes end-to-end without human intervention:
 - Partial JSON repair (`_repair_truncated_json`) recovers truncated outputs from small models hitting their token limit.
 
 ### Models Used
-| Role | Local (Ollama) | Cloud (OpenAI) |
-|------|---------------|----------------|
-| LLM-1 Parser | `gemma:2b` | `gpt-3.5-turbo` |
-| LLM-2 Scorer | `llama3` | `gpt-4o` |
+| Role | Local (Ollama) | Cloud (OpenAI) | Local (HuggingFace) |
+|------|---------------|----------------|---------------------|
+| LLM-1 Parser | `gemma:2b` | `gpt-3.5-turbo` | `google/flan-t5-base` |
+| LLM-2 Scorer | `llama3` | `gpt-4o` | — |

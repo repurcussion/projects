@@ -33,20 +33,26 @@ class RankedCandidate:
     candidate_name: str
     final_score: float                 # blended hybrid score (0-100)
 
-    # Weighted component contributions to the final score
-    weighted_skills: float = 0.0      # llm_skills_score × 0.50
-    weighted_experience: float = 0.0  # llm_experience_score × 0.30
-    weighted_education: float = 0.0   # llm_education_score × 0.20
+    # Weighted pillar contributions (raw 0-40/30/15/15 values from LLM)
+    weighted_technical: float = 0.0      # technical pillar raw score (0-40)
+    weighted_experience: float = 0.0     # experience pillar raw score (0-30)
+    weighted_soft_skills: float = 0.0    # soft skills pillar raw score (0-15)
+    weighted_impact: float = 0.0         # impact pillar raw score (0-15)
 
-    # Raw LLM sub-scores (for reporting and metrics)
+    # Normalised LLM sub-scores 0-100 (for metrics)
     keyword_score: float = 0.0
-    llm_skills_score: float = 0.0
+    llm_overall_score: float = 0.0
+    llm_technical_score: float = 0.0
     llm_experience_score: float = 0.0
-    llm_education_score: float = 0.0
+    llm_soft_skills_score: float = 0.0
+    llm_impact_score: float = 0.0
 
-    # Skills matching details (from keyword step)
+    # Key matches and critical gaps from LLM
     matched_skills: List[str] = field(default_factory=list)
     missing_skills: List[str] = field(default_factory=list)
+    key_matches: List[str] = field(default_factory=list)
+    critical_gaps: List[str] = field(default_factory=list)
+    verdict: str = ""
 
     # LLM-generated explanation of the score
     explanation: str = ""
@@ -63,13 +69,19 @@ class RankedCandidate:
             "final_score": round(self.final_score, 2),
             "grade": self.grade,
             "recommendation": self.recommendation,
-            "weighted_skills": round(self.weighted_skills, 2),
+            "verdict": self.verdict,
+            "weighted_technical": round(self.weighted_technical, 2),
             "weighted_experience": round(self.weighted_experience, 2),
-            "weighted_education": round(self.weighted_education, 2),
+            "weighted_soft_skills": round(self.weighted_soft_skills, 2),
+            "weighted_impact": round(self.weighted_impact, 2),
             "keyword_score": round(self.keyword_score, 2),
-            "llm_skills_score": round(self.llm_skills_score, 2),
+            "llm_overall_score": round(self.llm_overall_score, 2),
+            "llm_technical_score": round(self.llm_technical_score, 2),
             "llm_experience_score": round(self.llm_experience_score, 2),
-            "llm_education_score": round(self.llm_education_score, 2),
+            "llm_soft_skills_score": round(self.llm_soft_skills_score, 2),
+            "llm_impact_score": round(self.llm_impact_score, 2),
+            "key_matches": self.key_matches,
+            "critical_gaps": self.critical_gaps,
             "matched_skills": self.matched_skills,
             "missing_skills": self.missing_skills,
             "explanation": self.explanation,
@@ -101,14 +113,14 @@ def _recommendation(score: float) -> str:
     """
     Map a numeric score to a human-readable hiring recommendation.
 
-    ≥70 → Strong Hire  |  ≥55 → Consider  |  ≥40 → Weak Consider  |  <40 → Reject
+    ≥80 → Strong Hire  |  ≥60 → Hire  |  ≥40 → Potential  |  <40 → Reject
     """
-    if score >= 70:
+    if score >= 80:
         return "Strong Hire"
-    if score >= 55:
-        return "Consider"
+    if score >= 60:
+        return "Hire"
     if score >= 40:
-        return "Weak Consider"
+        return "Potential"
     return "Reject"
 
 
@@ -120,29 +132,33 @@ class Ranker:
     """
     Sorts a list of MatchResults into a ranked leaderboard.
 
-    Recomputes weighted component scores using the configured weights so the
+    Recomputes weighted pillar contributions using the configured weights so the
     breakdown is transparent and independent of how the matcher blended scores.
 
     Parameters
     ----------
-    weight_skills : float
-        LLM skills score weight (default 0.50 from config).
+    weight_technical : float
+        Technical skills weight (default 0.40 from config).
     weight_experience : float
-        LLM experience score weight (default 0.30 from config).
-    weight_education : float
-        LLM education score weight (default 0.20 from config).
+        Experience weight (default 0.30 from config).
+    weight_soft_skills : float
+        Soft skills & leadership weight (default 0.15 from config).
+    weight_impact : float
+        Project impact weight (default 0.15 from config).
     """
 
     def __init__(
         self,
-        weight_skills: float = None,
+        weight_technical: float = None,
         weight_experience: float = None,
-        weight_education: float = None,
+        weight_soft_skills: float = None,
+        weight_impact: float = None,
     ):
         # Use config defaults if not explicitly provided
-        self.w_skills = weight_skills or scoring_cfg.weight_skills
-        self.w_exp = weight_experience or scoring_cfg.weight_experience
-        self.w_edu = weight_education or scoring_cfg.weight_education
+        self.w_tech = weight_technical  or scoring_cfg.weight_technical
+        self.w_exp  = weight_experience or scoring_cfg.weight_experience
+        self.w_soft = weight_soft_skills or scoring_cfg.weight_soft_skills
+        self.w_imp  = weight_impact      or scoring_cfg.weight_impact
 
     def rank(self, match_results: List[MatchResult]) -> List[RankedCandidate]:
         """
@@ -171,22 +187,29 @@ class Ranker:
 
         ranked: List[RankedCandidate] = []
         for idx, result in enumerate(sorted_results, start=1):
-            # Recompute weighted component contributions for the breakdown display
-            w_skills = self.w_skills * result.llm_skills_score
-            w_exp = self.w_exp * result.llm_experience_score
-            w_edu = self.w_edu * result.llm_education_score
+            # Weighted pillar raw values (0-40/30/15/15) for breakdown display
+            w_tech = self.w_tech * result.llm_technical_score
+            w_exp  = self.w_exp  * result.llm_experience_score
+            w_soft = self.w_soft * result.llm_soft_skills_score
+            w_imp  = self.w_imp  * result.llm_impact_score
 
             rc = RankedCandidate(
                 rank=idx,
                 candidate_name=result.candidate_name,
                 final_score=round(result.final_score, 2),
-                weighted_skills=round(w_skills, 2),
+                weighted_technical=round(w_tech, 2),
                 weighted_experience=round(w_exp, 2),
-                weighted_education=round(w_edu, 2),
+                weighted_soft_skills=round(w_soft, 2),
+                weighted_impact=round(w_imp, 2),
                 keyword_score=round(result.keyword_score, 2),
-                llm_skills_score=round(result.llm_skills_score, 2),
+                llm_overall_score=round(result.llm_overall_score, 2),
+                llm_technical_score=round(result.llm_technical_score, 2),
                 llm_experience_score=round(result.llm_experience_score, 2),
-                llm_education_score=round(result.llm_education_score, 2),
+                llm_soft_skills_score=round(result.llm_soft_skills_score, 2),
+                llm_impact_score=round(result.llm_impact_score, 2),
+                key_matches=result.key_matches,
+                critical_gaps=result.critical_gaps,
+                verdict=result.verdict,
                 matched_skills=result.matched_skills,
                 missing_skills=result.missing_skills,
                 explanation=result.explanation,
