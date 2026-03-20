@@ -6,8 +6,10 @@ has to import concrete LLM classes directly.  Swapping the backend
 requires only a config/CLI change, not a code change.
 
 Two public functions:
-    get_parser_llm()  → LLM-1: extraction layer (gemma:2b / gpt-3.5-turbo / flan-t5-base)
-    get_scorer_llm()  → LLM-2: reasoning model for scoring (llama3 / gpt-4o)
+    get_parser_llm()  → LLM-1: extraction layer
+    get_scorer_llm()  → LLM-2: reasoning / scoring model
+
+Default provider is 'auto': OpenAI API → Ollama (local) → HuggingFace (local)
 """
 
 import logging
@@ -16,6 +18,7 @@ from llm_base import BaseLLM        # flat imports
 from llm_ollama import OllamaLLM
 from llm_openai import OpenAILLM
 from llm_hf import HuggingFaceLLM
+from llm_fallback import FallbackLLM
 from config import llm_cfg
 
 logger = logging.getLogger(__name__)
@@ -61,8 +64,6 @@ def _build_llm(model_name: str, openai_model: str) -> BaseLLM:
 
     elif provider == "hf":
         # Local HuggingFace encoder-decoder model (no server, no API key)
-        # LLM-1 uses flan-t5-base; LLM-2 still routes to Ollama llama3
-        # because large seq2seq models handle extraction but not deep scoring.
         hf_llm = HuggingFaceLLM(
             model_name=llm_cfg.hf_parser_model,
             max_input_tokens=llm_cfg.hf_max_input_tokens,
@@ -75,10 +76,28 @@ def _build_llm(model_name: str, openai_model: str) -> BaseLLM:
             )
         return hf_llm
 
+    elif provider == "auto":
+        # Cascading fallback: OpenAI API → Ollama → HuggingFace
+        # Each backend is tried in order; the first to succeed is used.
+        chain = [
+            OpenAILLM(model_name=openai_model),
+            OllamaLLM(model_name=model_name),
+            HuggingFaceLLM(
+                model_name=llm_cfg.hf_parser_model,
+                max_input_tokens=llm_cfg.hf_max_input_tokens,
+                max_new_tokens=llm_cfg.hf_max_new_tokens,
+            ),
+        ]
+        logger.info(
+            "Provider=auto: chain = %s",
+            " → ".join(llm.model_name for llm in chain),
+        )
+        return FallbackLLM(chain)
+
     else:
         raise ValueError(
             f"Unknown LLM_PROVIDER '{provider}'. "
-            "Set LLM_PROVIDER to 'ollama', 'openai', or 'hf'."
+            "Set LLM_PROVIDER to 'auto', 'ollama', 'openai', or 'hf'."
         )
 
 

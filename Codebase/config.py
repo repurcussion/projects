@@ -13,8 +13,9 @@ from typing import Optional
 # LLM back-end selection
 # ---------------------------------------------------------------------------
 
-# Supported providers: "ollama" | "openai" | "hf"
-LLM_PROVIDER: str = os.environ.get("LLM_PROVIDER", "ollama")
+# Supported providers: "auto" | "ollama" | "openai" | "hf"
+# auto = OpenAI API → Ollama (local) → HuggingFace (local)
+LLM_PROVIDER: str = os.environ.get("LLM_PROVIDER", "auto")
 
 # LLM-1  → lightweight parsing model
 PARSER_MODEL: str = os.environ.get("PARSER_MODEL", "gemma:2b")

@@ -149,6 +149,7 @@ Examples:
   python main.py --resumes ./resumes --jd jd.txt
   python main.py --resumes ./resumes --jd jd.txt --provider openai --scorer gpt-4o
   python main.py --resumes ./resumes --jd jd.txt --provider hf
+  python main.py --resumes ./resumes --jd jd.txt --provider auto
   python main.py --resumes ./resumes --jd jd.txt --demo
   python main.py --resumes ./resumes --jd jd.txt --verbose
 
@@ -170,8 +171,9 @@ URL-based resumes (SAS / presigned URLs, comma-separated):
         help="Output JSON file path (default: results.json)",
     )
     p.add_argument(
-        "--provider", default=None, choices=["ollama", "openai", "hf"],
-        help="LLM provider: ollama (default), openai, or hf (HuggingFace Flan-T5 local).",
+        "--provider", default=None, choices=["auto", "ollama", "openai", "hf"],
+        help="LLM provider: auto (default: OpenAI→Ollama→HF fallback), "
+             "ollama (local only), openai (API only), hf (HuggingFace local only).",
     )
     p.add_argument(
         "--parser", default=None, metavar="MODEL",
