@@ -46,6 +46,12 @@ numpy>=1.26.0            # Array operations for grouped bar positioning
 reportlab>=4.1.0         # PDF report generation (Report/Report.pdf)
 
 # ----------------------------------------------------------
+# HuggingFace – local LLM-1 extraction layer (provider=hf)
+# ----------------------------------------------------------
+transformers>=4.40.0     # Flan-T5 / BERT encoder-decoder models
+torch>=2.1.0             # PyTorch backend (CPU or CUDA)
+
+# ----------------------------------------------------------
 # Standard library back-ports / helpers
 # ----------------------------------------------------------
 # (No extra deps needed for dataclasses, json, re, pathlib)

@@ -106,7 +106,7 @@ def _import_modules():
     Deferred import so --help works even without dependencies installed.
     Produces actionable error messages if required packages are missing.
     """
-    global FileReader, read_resumes, read_job_description
+    global FileReader, read_resumes, read_resumes_from_urls, read_job_description
     global ResumeParser, JDParser
     global HybridMatcher
     global Ranker
@@ -116,7 +116,7 @@ def _import_modules():
     global llm_cfg, scoring_cfg
 
     try:
-        from file_reader import read_resumes, read_job_description   # flat import
+        from file_reader import read_resumes, read_resumes_from_urls, read_job_description
         from parser import ResumeParser, JDParser                      # flat import
         from matcher import HybridMatcher                              # flat import
         from ranker import Ranker                                      # flat import
@@ -148,13 +148,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
 Examples:
   python main.py --resumes ./resumes --jd jd.txt
   python main.py --resumes ./resumes --jd jd.txt --provider openai --scorer gpt-4o
+  python main.py --resumes ./resumes --jd jd.txt --provider hf
   python main.py --resumes ./resumes --jd jd.txt --demo
   python main.py --resumes ./resumes --jd jd.txt --verbose
+
+URL-based resumes (SAS / presigned URLs, comma-separated):
+  python main.py --resumes https://storage.azure.com/cv1.pdf,https://storage.azure.com/cv2.pdf --jd jd.txt
         """,
     )
     p.add_argument(
-        "--resumes", required=True, metavar="PATH",
-        help="Directory containing resume files (PDF, DOCX, DOC, or TXT)",
+        "--resumes", required=True, metavar="PATH_OR_URLS",
+        help="Local directory containing resume files (PDF/DOCX/DOC/TXT), "
+             "or a comma-separated list of HTTPS URLs (SAS/presigned/direct).",
     )
     p.add_argument(
         "--jd", required=True, metavar="FILE",
@@ -165,8 +170,8 @@ Examples:
         help="Output JSON file path (default: results.json)",
     )
     p.add_argument(
-        "--provider", default=None, choices=["ollama", "openai"],
-        help="LLM provider (default: ollama). Override LLM_PROVIDER env var.",
+        "--provider", default=None, choices=["ollama", "openai", "hf"],
+        help="LLM provider: ollama (default), openai, or hf (HuggingFace Flan-T5 local).",
     )
     p.add_argument(
         "--parser", default=None, metavar="MODEL",
@@ -382,13 +387,19 @@ def _validate_and_init(args: argparse.Namespace, logger: logging.Logger):
     # ------------------------------------------------------------------
     # 1. Early path validation – fail fast before any LLM calls
     # ------------------------------------------------------------------
-    resumes_path = Path(args.resumes)
+    _resumes_are_urls = args.resumes.startswith(("http://", "https://"))
+    resumes_path = Path(args.resumes) if not _resumes_are_urls else None
     jd_path = Path(args.jd)
 
-    if not resumes_path.exists() or not resumes_path.is_dir():
+    if not _resumes_are_urls and (
+        resumes_path is None
+        or not resumes_path.exists()
+        or not resumes_path.is_dir()
+    ):
         logger.error(
             "Resumes directory not found: '%s'\n"
-            "  Create the directory and add resume files (PDF/DOCX/TXT) inside.",
+            "  Create the directory and add resume files (PDF/DOCX/TXT) inside,\n"
+            "  or pass comma-separated HTTPS URLs instead.",
             args.resumes,
         )
         return None
@@ -497,8 +508,12 @@ def run_pipeline(args: argparse.Namespace) -> int:
     # ------------------------------------------------------------------
     logger.info("Reading resumes from: %s", args.resumes)
     try:
-        from file_reader import read_resumes, read_job_description
-        raw_resumes = read_resumes(args.resumes)
+        from file_reader import read_resumes, read_resumes_from_urls, read_job_description
+        if args.resumes.startswith(("http://", "https://")):
+            urls = [u.strip() for u in args.resumes.split(",") if u.strip()]
+            raw_resumes = read_resumes_from_urls(urls)
+        else:
+            raw_resumes = read_resumes(args.resumes)
         raw_jd = read_job_description(args.jd)
     except (FileNotFoundError, ValueError) as exc:
         logger.error("Input error: %s", exc)

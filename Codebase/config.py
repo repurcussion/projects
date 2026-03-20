@@ -13,7 +13,7 @@ from typing import Optional
 # LLM back-end selection
 # ---------------------------------------------------------------------------
 
-# Supported providers: "ollama" | "openai"
+# Supported providers: "ollama" | "openai" | "hf"
 LLM_PROVIDER: str = os.environ.get("LLM_PROVIDER", "ollama")
 
 # LLM-1  → lightweight parsing model
@@ -29,6 +29,12 @@ OLLAMA_BASE_URL: str = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434
 OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
 OPENAI_PARSER_MODEL: str = os.environ.get("OPENAI_PARSER_MODEL", "gpt-3.5-turbo")
 OPENAI_SCORER_MODEL: str = os.environ.get("OPENAI_SCORER_MODEL", "gpt-4o")
+
+# HuggingFace (local encoder-decoder, no server or API key required)
+# LLM-1 extraction layer: Flan-T5 instruction-following seq2seq model
+HF_PARSER_MODEL: str = os.environ.get("HF_PARSER_MODEL", "google/flan-t5-base")
+HF_MAX_INPUT_TOKENS: int = int(os.environ.get("HF_MAX_INPUT_TOKENS", "512"))
+HF_MAX_NEW_TOKENS: int = int(os.environ.get("HF_MAX_NEW_TOKENS", "384"))
 
 # ---------------------------------------------------------------------------
 # Scoring weights  (must sum to 1.0)
@@ -70,6 +76,9 @@ class LLMConfig:
     openai_api_key: Optional[str] = OPENAI_API_KEY
     openai_parser_model: str = OPENAI_PARSER_MODEL
     openai_scorer_model: str = OPENAI_SCORER_MODEL
+    hf_parser_model: str = HF_PARSER_MODEL
+    hf_max_input_tokens: int = HF_MAX_INPUT_TOKENS
+    hf_max_new_tokens: int = HF_MAX_NEW_TOKENS
     timeout: int = LLM_TIMEOUT
     max_retries: int = MAX_RETRIES
 

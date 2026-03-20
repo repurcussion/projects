@@ -13,10 +13,61 @@ an empty string on failure so the pipeline can continue without crashing.
 
 import logging
 import os
+import tempfile
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Secure remote file retrieval (SAS / presigned URLs)
+# ---------------------------------------------------------------------------
+
+def _download_url(url: str) -> Optional[Path]:
+    """
+    Fetch a remote resume file from *url* into a transient local temp file.
+
+    Supports:
+    - Azure Blob Storage SAS URLs
+    - AWS S3 presigned URLs
+    - Any plain HTTPS direct-download link
+
+    The caller is responsible for unlinking the returned Path after use.
+    Returns None on any network or HTTP error.
+    """
+    try:
+        import requests
+    except ImportError:
+        logger.error("requests not installed. Install with: pip install requests")
+        return None
+
+    try:
+        logger.info("Fetching remote resume: %s", url[:80])
+        resp = requests.get(url, timeout=30, allow_redirects=True)
+        resp.raise_for_status()
+
+        # Infer file extension from Content-Type header or bare URL path
+        content_type = resp.headers.get("Content-Type", "").lower()
+        bare_url = url.split("?")[0].lower()   # strip SAS query string
+        if "pdf" in content_type or bare_url.endswith(".pdf"):
+            suffix = ".pdf"
+        elif "docx" in content_type or bare_url.endswith((".docx", ".doc")):
+            suffix = ".docx"
+        else:
+            suffix = ".txt"
+
+        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
+        tmp.write(resp.content)
+        tmp.flush()
+        tmp.close()
+        logger.info(
+            "Downloaded %d bytes → temp file '%s'", len(resp.content), tmp.name
+        )
+        return Path(tmp.name)
+    except Exception as exc:
+        logger.error("Failed to download URL '%s …': %s", url[:60], exc)
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -96,9 +147,29 @@ class FileReader:
         """
         Extract and return plain text from *path*.
 
+        *path* may be a local filesystem path **or** an HTTP/HTTPS URL
+        (including Azure SAS and AWS presigned URLs).  Remote files are
+        downloaded transiently to a temp file and deleted immediately
+        after extraction – nothing is persisted to disk.
+
         Dispatches to the correct extractor based on file extension.
         Returns empty string if the file is unreadable or unsupported.
         """
+        path_str = str(path)
+
+        # ── Remote URL (SAS / presigned / plain HTTPS) ──────────────────
+        if path_str.startswith(("http://", "https://")):
+            tmp_path = _download_url(path_str)
+            if tmp_path is None:
+                return ""
+            try:
+                return self.read(tmp_path)   # recurse with local temp path
+            finally:
+                try:
+                    tmp_path.unlink()
+                except OSError:
+                    pass
+
         p = Path(path)
 
         if not p.exists():
@@ -137,6 +208,48 @@ class FileReader:
             logger.warning("Extracted empty text from '%s'.", p)
 
         return text
+
+    def read_from_urls(self, urls: List[str]) -> Dict[str, str]:
+        """
+        Fetch and extract text from a list of remote resume URLs.
+
+        Each URL may point to a PDF, DOCX, or TXT file hosted on any
+        HTTPS server including Azure Blob Storage (SAS) or AWS S3
+        (presigned URL).  Files are handled transiently – no local copy
+        is retained after extraction.
+
+        Parameters
+        ----------
+        urls : list of str
+            Resume URLs.  The candidate name is derived from the URL
+            basename (stripping query strings and extension).
+
+        Returns
+        -------
+        dict
+            {candidate_name: extracted_text} for all successfully read URLs.
+
+        Raises
+        ------
+        ValueError
+            If no URLs could be read successfully.
+        """
+        results: Dict[str, str] = {}
+        for url in urls:
+            text = self.read(url)
+            if text:
+                name = Path(url.split("?")[0]).stem or f"candidate_{len(results)+1}"
+                results[name] = text
+                logger.info("Read remote resume: '%s' (%d chars)", name, len(text))
+            else:
+                logger.warning("Skipping unreadable URL: '%s'", url[:80])
+
+        if not results:
+            raise ValueError(
+                "No resume URLs could be read. "
+                "Check that the URLs are valid and accessible."
+            )
+        return results
 
     def read_directory(self, directory) -> Dict[str, str]:
         """
@@ -202,6 +315,26 @@ def read_resumes(directory) -> Dict[str, str]:
         {candidate_name_stem: raw_text}
     """
     return _reader.read_directory(directory)
+
+
+def read_resumes_from_urls(urls: List[str]) -> Dict[str, str]:
+    """
+    Fetch and extract resumes from a list of remote URLs.
+
+    Supports Azure SAS URLs, AWS S3 presigned URLs, and any HTTPS link.
+    Files are processed transiently \u2013 no local copy is retained.
+
+    Parameters
+    ----------
+    urls : list of str
+        One URL per resume file.
+
+    Returns
+    -------
+    dict
+        {candidate_name: raw_text}
+    """
+    return _reader.read_from_urls(urls)
 
 
 def read_job_description(filepath) -> str:

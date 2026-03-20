@@ -6,7 +6,7 @@ has to import concrete LLM classes directly.  Swapping the backend
 requires only a config/CLI change, not a code change.
 
 Two public functions:
-    get_parser_llm()  → LLM-1: lightweight model for parsing (gemma:2b / gpt-3.5-turbo)
+    get_parser_llm()  → LLM-1: extraction layer (gemma:2b / gpt-3.5-turbo / flan-t5-base)
     get_scorer_llm()  → LLM-2: reasoning model for scoring (llama3 / gpt-4o)
 """
 
@@ -15,6 +15,7 @@ import logging
 from llm_base import BaseLLM        # flat imports
 from llm_ollama import OllamaLLM
 from llm_openai import OpenAILLM
+from llm_hf import HuggingFaceLLM
 from config import llm_cfg
 
 logger = logging.getLogger(__name__)
@@ -58,18 +59,37 @@ def _build_llm(model_name: str, openai_model: str) -> BaseLLM:
         # API key is read from OPENAI_API_KEY env var inside OpenAILLM
         return OpenAILLM(model_name=openai_model)
 
+    elif provider == "hf":
+        # Local HuggingFace encoder-decoder model (no server, no API key)
+        # LLM-1 uses flan-t5-base; LLM-2 still routes to Ollama llama3
+        # because large seq2seq models handle extraction but not deep scoring.
+        hf_llm = HuggingFaceLLM(
+            model_name=llm_cfg.hf_parser_model,
+            max_input_tokens=llm_cfg.hf_max_input_tokens,
+            max_new_tokens=llm_cfg.hf_max_new_tokens,
+        )
+        if not hf_llm.is_available():
+            logger.warning(
+                "transformers/torch not installed. "
+                "Install with: pip install transformers torch"
+            )
+        return hf_llm
+
     else:
         raise ValueError(
             f"Unknown LLM_PROVIDER '{provider}'. "
-            "Set LLM_PROVIDER to 'ollama' or 'openai'."
+            "Set LLM_PROVIDER to 'ollama', 'openai', or 'hf'."
         )
 
 
 def get_parser_llm() -> BaseLLM:
     """
-    Return LLM-1: the lightweight parsing model.
+    Return LLM-1: the extraction layer model.
 
-    Ollama → gemma:2b  |  OpenAI → gpt-3.5-turbo
+    Ollama  → gemma:2b          (local, requires ollama pull gemma:2b)
+    OpenAI  → gpt-3.5-turbo     (cloud, requires OPENAI_API_KEY)
+    HF      → flan-t5-base      (local, downloaded from HuggingFace Hub)
+
     Used to extract structured JSON from raw resume and JD text.
     """
     logger.info(
