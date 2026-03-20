@@ -1,0 +1,31 @@
+BOB MARTINEZ
+Email: bob.martinez@email.com | Phone: +1-555-0202
+
+PROFESSIONAL SUMMARY
+Data Engineer with 4 years of experience building robust data pipelines and warehousing
+solutions. Solid foundation in Python and SQL. Some exposure to machine learning workflows
+but primary expertise is in data infrastructure and ETL processes.
+
+SKILLS
+Python, SQL, Apache Spark, Kafka, Airflow, dbt, Snowflake, PostgreSQL, MySQL,
+AWS (S3, Glue, Redshift), Terraform, Docker, Git, Tableau, Power BI, Pandas, NumPy
+
+WORK EXPERIENCE
+
+Data Engineer – CloudData Co.  (2022 – Present, 2 years)
+- Designed and maintained 30+ ETL pipelines using Apache Airflow and dbt
+- Migrated legacy Oracle databases to Snowflake, improving query performance by 60%
+- Built real-time streaming pipelines using Kafka for financial transaction monitoring
+- Collaborated with data scientists to deploy models as REST APIs (basic Flask)
+
+Junior Data Engineer – RetailTech  (2020 – 2022, 2 years)
+- Developed Python scripts for data cleaning and transformation
+- Maintained SQL-based reporting dashboards used by executive leadership
+- Participated in migrating on-premise infrastructure to AWS
+
+EDUCATION
+B.Sc. Information Systems – University of Texas, Austin, 2020
+
+CERTIFICATIONS
+- AWS Certified Data Analytics – Specialty (2021)
+- Snowflake SnowPro Core Certification (2022)

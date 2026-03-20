@@ -1,0 +1,167 @@
+==============================================================
+  SAMPLE OUTPUT – CV Sorting Pipeline (Demo Mode)
+  Command: python main.py --resumes ./resumes --jd jd.txt --demo
+==============================================================
+
+[INFO] CV Sorting Pipeline starting...
+[INFO] Resumes: ./resumes | JD: jd.txt
+[INFO] DEMO MODE: Using mock LLM (no Ollama required)
+[INFO] Reading resumes from: ./resumes
+[INFO] Loaded 5 resumes | JD: 1842 chars
+[INFO] Parsing job description...
+[INFO] Parsing 5 resumes...
+[INFO] Parsing complete in 0.61s
+[INFO] Matching 5 candidates against JD...
+[INFO] Matching complete in 0.54s
+
+=================================================================
+  CV SORTING PIPELINE – Results
+=================================================================
+  Job Title       : Senior Machine Learning Engineer
+  Required Skills : Python, PyTorch, TensorFlow, Hugging Face Transformers, LangChain, MLflow...
+  Min Experience  : 4.0 years
+  Candidates      : 5
+  Timestamp       : 2025-01-15 14:32:07
+=================================================================
+
+Ranked Candidates:
+
+  #1  Alice Chen                Score:   88.8/100  Grade: A  [Strong Hire]
+       Skills: 92  Experience: 95  Education: 100  Keyword: 77
+       ✓ Matched: python, pytorch, tensorflow, hugging face transformers, langchain...
+       Reasoning:
+         Alice has all 12 required skills and 7 preferred skills. Her 6
+         years of experience significantly exceeds the 4-year requirement,
+         with direct LLM production experience. M.Sc. from Stanford exceeds
+         the education requirement.
+
+  #2  Carol Nguyen              Score:   86.8/100  Grade: A  [Strong Hire]
+       Skills: 96  Experience: 85  Education: 100  Keyword: 72
+       ✓ Matched: python, pytorch, tensorflow, hugging face transformers, langchain...
+       ✗ Missing: kubernetes, aws, git
+       Reasoning:
+         Carol has all required skills plus extensive preferred skills
+         including RAG, LoRA, PEFT, Pinecone, and FAISS. Her 5 years in ML
+         research with LLM fine-tuning is highly relevant. Ph.D. (ABD) from
+         MIT exceeds all education requirements. Small gap: primarily
+         research background with less production deployment experience
+         versus Alice.
+
+  #3  Eve Patel                 Score:   79.8/100  Grade: B  [Strong Hire]
+       Skills: 88  Experience: 80  Education: 80  Keyword: 68
+       ✓ Matched: python, pytorch, tensorflow, hugging face transformers, langchain...
+       Reasoning:
+         Eve has 12 required skills and multiple preferred skills including
+         LangChain, OpenAI API, and MLflow. Her 4 years in ML engineering
+         meets the minimum with strong production deployments. B.Tech. from
+         IIT Bombay meets but does not exceed education requirement.
+         Primarily computer vision background but LangChain QA system
+         demonstrates NLP capability.
+
+  #4  Bob Martinez              Score:   32.5/100  Grade: F  [Reject]
+       Skills: 28  Experience: 40  Education: 60  Keyword: 27
+       ✗ Missing: pytorch, tensorflow, hugging face transformers, langchain, kubernetes...
+       Reasoning:
+         Bob has Python and SQL but is missing 8 required skills including
+         PyTorch, TensorFlow, Hugging Face Transformers, LangChain,
+         Kubernetes, and MLflow. His 4 years experience meets the minimum
+         but is in data engineering, not ML engineering. Education meets
+         minimum requirement.
+
+  #5  David Okafor              Score:   24.1/100  Grade: F  [Reject]
+       Skills: 18  Experience: 25  Education: 60  Keyword: 29
+       ✗ Missing: pytorch, tensorflow, hugging face transformers, langchain, mlflow...
+       Reasoning:
+         David is missing most required ML skills: no PyTorch/TensorFlow
+         production experience, no LangChain, no Kubernetes, no Hugging
+         Face Transformers in production. His 3 years are in backend
+         engineering, not ML. Personal ML projects show interest but do
+         not substitute for professional experience. Not recommended for
+         a senior role.
+
+-----------------------------------------------------------------
+
+Evaluation Metrics:
+----------------------------------------
+  Precision At 3             : 1.0000
+  Recall At 3                : 1.0000
+  Mrr                        : 1.0000
+  Ndcg At 3                  : 1.0000
+  Explainability Score       : 0.9800
+  Total Relevant Candidates  : 3
+  Relevance Threshold        : 60.0
+  Top K                      : 3
+
+  Latency (s)                : parse=0.62  match=0.52  total=1.15
+
+  Approach Comparison
+    keyword_only_mean       : 54.50
+    llm_only_mean           : 67.70
+    hybrid_mean             : 62.41
+    keyword_std             : 21.91
+    llm_std                 : 28.52
+    hybrid_std              : 28.12
+----------------------------------------
+
+Results saved to: /path/to/Codebase/results.json
+
+==============================================================
+  SAMPLE results.json (excerpt)
+==============================================================
+
+{
+  "metadata": {
+    "timestamp": "2025-01-15T14:32:08.441Z",
+    "job_title": "Senior Machine Learning Engineer",
+    "total_candidates": 5,
+    "model_info": {
+      "provider": "ollama",
+      "parser_model": "gemma:2b",
+      "scorer_model": "llama3",
+      "llm1_role": "Resume + JD Parsing",
+      "llm2_role": "Semantic Scoring + Explanation"
+    }
+  },
+  "ranked_candidates": [
+    {
+      "rank": 1,
+      "candidate_name": "Alice Chen",
+      "final_score": 91.8,
+      "grade": "A",
+      "recommendation": "Strong Hire",
+      "weighted_skills": 46.0,
+      "weighted_experience": 28.5,
+      "weighted_education": 20.0,
+      "keyword_score": 85.0,
+      "llm_skills_score": 92.0,
+      "llm_experience_score": 95.0,
+      "llm_education_score": 100.0,
+      "llm_overall_score": 94.0,
+      "matched_skills": ["python", "pytorch", "tensorflow", "langchain", "mlflow",
+                         "docker", "kubernetes", "aws", "fastapi", "sql", "git"],
+      "missing_skills": [],
+      "explanation": "Alice has all 12 required skills and 7 preferred skills..."
+    },
+    ...
+  ],
+  "evaluation_metrics": {
+    "core_metrics": {
+      "precision_at_3": 1.0,
+      "recall_at_3": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_3": 1.0,
+      "explainability_score": 0.9
+    },
+    "latency": {
+      "parse_time": 0.61,
+      "match_time": 0.54,
+      "total_time": 1.22,
+      "avg_time_per_candidate": 0.108
+    },
+    "approach_comparison": {
+      "keyword_only_mean": 58.4,
+      "llm_only_mean": 68.12,
+      "hybrid_mean": 64.48
+    }
+  }
+}

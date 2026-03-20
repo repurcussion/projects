@@ -1,0 +1,58 @@
+Job Title: Senior Machine Learning Engineer
+
+Company: InnovateTech AI Labs
+Location: Remote / San Francisco, CA
+Employment Type: Full-Time
+
+ABOUT THE ROLE
+We are seeking a Senior Machine Learning Engineer to join our AI Platform team.
+You will design, build, and deploy production ML systems with a focus on NLP and
+large language models. You will work closely with research scientists, product
+managers, and platform engineers to bring cutting-edge AI capabilities to millions
+of users.
+
+REQUIRED SKILLS
+- Python (advanced proficiency)
+- PyTorch or TensorFlow (deep learning frameworks)
+- Hugging Face Transformers
+- LangChain
+- MLflow or similar experiment tracking
+- Docker and Kubernetes (containerisation and orchestration)
+- AWS or GCP (cloud ML platforms)
+- SQL and data manipulation
+- FastAPI or REST API design
+- Git and CI/CD practices
+
+PREFERRED SKILLS
+- Experience with LLMs (GPT, LLaMA, Mistral, Gemma)
+- Knowledge of RAG (Retrieval-Augmented Generation)
+- OpenAI API integration
+- Apache Spark for large-scale data processing
+- MLOps best practices (model monitoring, drift detection)
+- Fine-tuning transformer models (LoRA, PEFT)
+- Vector databases (Pinecone, FAISS, Chroma)
+- Publication or open-source contribution in ML/NLP
+
+MINIMUM EXPERIENCE
+4 years of professional experience in machine learning engineering or a closely
+related field. At least 2 years working with deep learning frameworks in production
+environments.
+
+EDUCATION REQUIREMENT
+Bachelor's degree in Computer Science, Machine Learning, Mathematics, or a related
+field. Master's or PhD is preferred but not required.
+
+KEY RESPONSIBILITIES
+- Design and implement scalable ML pipelines for NLP tasks
+- Fine-tune and deploy large language models for production use cases
+- Build LangChain-based applications including RAG systems
+- Collaborate with research team to productionise experimental models
+- Establish MLOps best practices including monitoring and automated retraining
+- Mentor junior engineers and conduct code reviews
+
+WHAT WE OFFER
+- Competitive salary ($180,000 – $240,000)
+- Equity package
+- Fully remote with quarterly team offsites
+- $5,000 annual learning budget
+- Top-tier health, dental, vision benefits

@@ -1,0 +1,41 @@
+EVE PATEL
+Email: eve.patel@email.com | Phone: +1-555-0505
+GitHub: github.com/evepatel
+
+SUMMARY
+ML Engineer with 4 years of industry experience deploying machine learning models at
+scale. Expertise in computer vision and NLP. Strong Python and MLOps skills. Experience
+with LLMs and building LangChain-based applications.
+
+TECHNICAL SKILLS
+ML/DL: Python, PyTorch, TensorFlow, Scikit-learn, Hugging Face Transformers, LangChain,
+       OpenAI API, Stable Diffusion, YOLO, OpenCV
+MLOps: Docker, Kubernetes, MLflow, DVC, Prometheus, Grafana, GitHub Actions, ArgoCD
+Cloud: AWS (SageMaker, Lambda, S3, ECR), GCP (basic)
+Data: SQL, PostgreSQL, Spark, Pandas, NumPy, Kafka (basic)
+Languages: Python (expert), C++ (intermediate), Bash
+
+PROFESSIONAL EXPERIENCE
+
+ML Engineer – Autonomous Systems Corp  (2022 – Present, 2 years)
+- Built and deployed computer vision pipeline for real-time object detection (YOLO v8)
+  processing 30 FPS on edge devices
+- Developed LangChain-based document QA system for internal knowledge base
+- Containerised 12 ML services with Docker/Kubernetes on AWS EKS
+- Implemented model monitoring dashboard using Prometheus + Grafana detecting drift in
+  <30 minutes
+
+ML Engineer – E-Commerce AI  (2020 – 2022, 2 years)
+- Built product recommendation system (collaborative filtering + deep learning) increasing
+  CTR by 22%
+- Fine-tuned BERT for product classification across 500+ categories (accuracy: 94%)
+- Automated data labelling pipeline reducing manual annotation time by 70%
+- Deployed models via FastAPI with autoscaling on AWS
+
+EDUCATION
+B.Tech. Computer Science and Engineering – IIT Bombay, 2020
+
+CERTIFICATIONS
+- AWS Certified Machine Learning – Specialty (2021)
+- Kubernetes Administrator (CKA) (2023)
+- LangChain Developer Certification (2024)

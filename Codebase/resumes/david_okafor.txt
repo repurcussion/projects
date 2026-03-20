@@ -1,0 +1,40 @@
+DAVID OKAFOR
+Email: david.okafor@email.com | Phone: +1-555-0404
+
+PROFESSIONAL PROFILE
+Software Engineer with 3 years of backend development experience. Recently completed
+an intensive ML bootcamp and built personal projects in machine learning. Eager to
+transition into ML engineering role. Strong software foundations but limited production
+ML experience.
+
+SKILLS
+Programming: Python, Java, JavaScript, SQL
+ML (learning): Scikit-learn, Pandas, NumPy, basic TensorFlow, Jupyter Notebook
+Backend: Spring Boot, Node.js, REST APIs, PostgreSQL, MongoDB, Redis
+DevOps: Docker, Jenkins, Git, Linux
+Cloud: AWS (EC2, S3, RDS) – basic usage
+
+WORK EXPERIENCE
+
+Backend Software Engineer – FinTech Solutions Ltd.  (2021 – Present, 3 years)
+- Built and maintained microservices handling 100K daily financial transactions
+- Designed RESTful APIs consumed by mobile and web clients
+- Optimised PostgreSQL queries reducing average response time by 45%
+- Implemented automated testing suite (pytest) achieving 85% code coverage
+
+Junior Developer – WebAgency  (2020 – 2021, 1 year)
+- Developed CRUD web applications using Python Flask and PostgreSQL
+- Integrated third-party APIs for payment processing and SMS notifications
+
+PERSONAL ML PROJECTS
+- Loan Default Predictor (Scikit-learn, 83% accuracy) – GitHub
+- Sentiment Analysis API using pre-trained BERT model (Hugging Face) – GitHub
+- Titanic Kaggle competition (top 25%)
+
+EDUCATION
+B.Sc. Computer Science – University of Lagos, 2020
+Machine Learning Certificate – Coursera (Andrew Ng), 2023
+
+CERTIFICATIONS
+- Machine Learning Specialisation – Coursera / Stanford (2023)
+- AWS Cloud Practitioner (2022)

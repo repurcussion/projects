@@ -1,0 +1,43 @@
+ALICE CHEN
+Email: alice.chen@email.com | Phone: +1-555-0101
+LinkedIn: linkedin.com/in/alicechen | GitHub: github.com/alicechen
+
+SUMMARY
+Senior Machine Learning Engineer with 6 years of experience designing and deploying
+production ML systems. Proven track record of building end-to-end pipelines from data
+ingestion to model serving. Passionate about NLP and large language models.
+
+SKILLS
+Technical: Python, TensorFlow, PyTorch, Scikit-learn, Keras, Hugging Face Transformers,
+           LangChain, OpenAI API, FastAPI, Docker, Kubernetes, Apache Spark, SQL,
+           PostgreSQL, Redis, Git, CI/CD, AWS (SageMaker, S3, EC2), MLflow, DVC
+Soft Skills: Team leadership, technical mentoring, cross-functional collaboration,
+             strong written communication
+
+PROFESSIONAL EXPERIENCE
+
+Senior ML Engineer – DataSphere Inc.  (2021 – Present, 3 years)
+- Designed and deployed a real-time NLP pipeline processing 500K documents/day using
+  Hugging Face Transformers and FastAPI, reducing latency by 40%
+- Led a team of 4 engineers to build a recommendation engine (PyTorch) serving 2M users
+- Implemented MLflow-based model registry reducing deployment time from 2 days to 3 hours
+- Fine-tuned LLaMA 2 and GPT-3.5 for domain-specific classification tasks
+- Established MLOps best practices including automated testing and model drift detection
+
+ML Engineer – TechVision Labs  (2019 – 2021, 2 years)
+- Built CV parsing system using spaCy and custom NER models (F1: 0.91)
+- Developed A/B testing framework for model comparison integrated with Kafka
+- Migrated on-premise ML workloads to AWS SageMaker, cutting infrastructure costs by 35%
+
+Data Scientist – Analytics Corp  (2018 – 2019, 1 year)
+- Created customer churn prediction model (XGBoost) achieving 88% AUC
+- Automated reporting pipelines using Python and SQL, saving 10 hours/week
+
+EDUCATION
+M.Sc. Computer Science (Machine Learning) – Stanford University, 2018
+B.Sc. Computer Engineering – UC Berkeley, 2016
+
+CERTIFICATIONS
+- AWS Certified Machine Learning – Specialty (2022)
+- Deep Learning Specialisation – Coursera / DeepLearning.AI (2020)
+- LangChain for LLM Application Development – DeepLearning.AI (2023)

@@ -1,0 +1,142 @@
+==============================================================
+  CV SORTING USING LLMs – Execution Instructions
+==============================================================
+
+--------------------------------------------------------------
+PREREQUISITES
+--------------------------------------------------------------
+1. Python 3.10 or higher
+2. Install dependencies:
+     pip install -r requirements.txt
+
+3. (For Ollama mode) Install Ollama:
+     https://ollama.com/download
+   Pull the two required models:
+     ollama pull gemma:2b
+     ollama pull llama3
+
+4. (For OpenAI mode) Set your API key:
+     export OPENAI_API_KEY="sk-..."
+
+--------------------------------------------------------------
+BASIC EXECUTION (Ollama – default)
+--------------------------------------------------------------
+# TXT job description (default)
+python main.py --resumes ./resumes --jd jd.txt
+
+# PDF job description
+python main.py --resumes ./resumes --jd jd.pdf
+
+# DOCX job description
+python main.py --resumes ./resumes --jd jd.docx
+
+--------------------------------------------------------------
+DEMO MODE (No Ollama / No API key required)
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt --demo
+
+--------------------------------------------------------------
+DEFAULT OUTPUT (report + charts generated automatically)
+--------------------------------------------------------------
+# Every run produces:
+#   output/candidate_scores.png      – scores bar chart (intermediate)
+#   output/score_breakdown.png       – component breakdown (intermediate)
+#   output/approach_comparison.png   – approach comparison (intermediate)
+#   Report/Report.pdf                – consolidated PDF report
+# Requires: pip install reportlab matplotlib numpy
+python main.py --resumes ./resumes --jd jd.txt --demo
+
+--------------------------------------------------------------
+CHARTS ONLY (no PDF report)
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt --demo --charts
+# Produces: output/*.png only
+
+--------------------------------------------------------------
+SKIP REPORT AND CHARTS
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt --demo --no-report
+
+--------------------------------------------------------------
+OPENAI MODE
+--------------------------------------------------------------
+export OPENAI_API_KEY="sk-your-key-here"
+python main.py --resumes ./resumes --jd jd.txt \
+  --provider openai \
+  --parser gpt-3.5-turbo \
+  --scorer gpt-4o
+
+--------------------------------------------------------------
+CUSTOM MODELS (Ollama)
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt \
+  --parser gemma:2b \
+  --scorer llama3
+
+--------------------------------------------------------------
+CUSTOM OUTPUT + TOP-K
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt \
+  --output my_results.json \
+  --topk 5 \
+  --demo
+
+--------------------------------------------------------------
+VERBOSE / DEBUG MODE
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt \
+  --demo --verbose
+
+--------------------------------------------------------------
+ENVIRONMENT VARIABLE OVERRIDES
+--------------------------------------------------------------
+  LLM_PROVIDER   = ollama | openai   (default: ollama)
+  PARSER_MODEL   = gemma:2b          (default: gemma:2b)
+  SCORER_MODEL   = llama3            (default: llama3)
+  OLLAMA_BASE_URL= http://localhost:11434
+  OPENAI_API_KEY = sk-...
+
+--------------------------------------------------------------
+EXPECTED OUTPUT
+--------------------------------------------------------------
+Terminal: Ranked candidate table with scores, grades,
+          matched/missing skills, and LLM explanations.
+
+File:     results.json (full structured output)
+
+--------------------------------------------------------------
+OPENAI MODE WITH API KEY FLAG
+--------------------------------------------------------------
+python main.py --resumes ./resumes --jd jd.txt \
+  --provider openai \
+  --parser gpt-3.5-turbo \
+  --scorer gpt-4o \
+  --api-key sk-your-key-here
+
+--------------------------------------------------------------
+PROJECT STRUCTURE (flat – all files in same directory)
+--------------------------------------------------------------
+Codebase/
+├── main.py           # Entry point + CLI + MockLLM + pipeline orchestrator
+├── config.py         # Central configuration (models, weights, thresholds)
+├── llm_base.py       # BaseLLM abstract interface (LLM-agnostic contract)
+├── llm_ollama.py     # OllamaLLM – local Ollama server (gemma:2b, llama3)
+├── llm_openai.py     # OpenAILLM – OpenAI API (gpt-3.5-turbo, gpt-4o)
+├── llm_factory.py    # Factory: wires config/CLI flags to LLM instances
+├── file_reader.py    # Reads PDF / DOCX / TXT resume and JD files
+├── parser.py         # LLM-1: ResumeParser + JDParser (structured extraction)
+├── matcher.py        # LLM-2: HybridMatcher (keyword overlap + LLM scoring)
+├── ranker.py         # Ranker – sorts by score, assigns grade + recommendation
+├── reporter.py       # Terminal display (colour-coded) + results.json output
+├── metrics.py        # Evaluator – Precision@K, Recall@K, MRR, NDCG, latency
+├── requirements.txt  # Python dependencies
+├── execution.txt     # This file
+├── jd.txt            # Sample job description (PDF/DOCX/DOC/TXT all accepted)
+├── sample_output.txt # Example terminal output
+└── resumes/          # Sample resume files (PDF/DOCX/TXT accepted)
+    ├── alice_chen.txt
+    ├── bob_martinez.txt
+    ├── carol_nguyen.txt
+    ├── david_okafor.txt
+    └── eve_patel.txt
+==============================================================

@@ -1,0 +1,45 @@
+CAROL NGUYEN
+Email: carol.nguyen@email.com | Phone: +1-555-0303
+Portfolio: carolnguyen.dev
+
+ABOUT ME
+Machine Learning Researcher with 5 years of academic and industry experience.
+Specialised in NLP, deep learning, and generative AI. Published 3 peer-reviewed papers
+on transformer architectures. Transitioning from research to applied ML engineering.
+
+TECHNICAL SKILLS
+Core ML: Python, PyTorch, TensorFlow, JAX, Hugging Face Transformers, PEFT, LoRA
+NLP: BERT, GPT, T5, LLaMA, RAG, LangChain, spaCy, NLTK, sentence-transformers
+MLOps: MLflow, Weights & Biases, DVC, Docker, GitHub Actions
+Cloud: GCP (Vertex AI, BigQuery), AWS (basic), Azure ML
+Data: Pandas, NumPy, Matplotlib, SQL, MongoDB
+Other: FastAPI, LangGraph, OpenAI API, Pinecone, FAISS
+
+EXPERIENCE
+
+ML Research Engineer – AI Research Lab, MIT  (2021 – Present, 3 years)
+- Developed novel attention mechanism reducing transformer training cost by 25%
+- Fine-tuned and evaluated LLaMA 2 and Mistral on biomedical NLP tasks
+- Built RAG-based question-answering system achieving 0.87 F1 on internal benchmark
+- Mentored 5 graduate students on ML best practices and experimental design
+
+Research Intern – Google Brain  (Summer 2022, 4 months)
+- Contributed to pre-training pipeline for a 7B parameter language model
+- Implemented data augmentation strategies improving low-resource NLP accuracy by 18%
+
+Teaching Assistant – MIT CSAIL  (2020 – 2021, 1 year)
+- Assisted in teaching graduate-level NLP and Deep Learning courses
+- Developed lab exercises using PyTorch and Hugging Face
+
+EDUCATION
+Ph.D. Candidate, Computer Science (NLP) – MIT, 2019 – Present (ABD)
+B.Sc. Mathematics & Computer Science – University of Michigan, 2019
+
+PUBLICATIONS
+- "Efficient Attention for Long Document Transformers" – ACL 2023
+- "Low-Resource NLP with Parameter-Efficient Fine-Tuning" – EMNLP 2022
+- "RAG vs Fine-tuning: A Systematic Comparison" – NAACL 2023
+
+CERTIFICATIONS
+- LangChain Advanced Developer – LangChain Academy (2024)
+- TensorFlow Developer Certificate – Google (2021)
